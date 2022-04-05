@@ -5,8 +5,8 @@ export default interface Tuit {
     tuit: string,
     postedBy: User,
     postedOn?: Date,
-    image?: String,
-    youtube?: String,
+    image?: Array<String>,
+    video: String,
     avatarLogo?: String,
     imageOverlay?: String,
     stats: Stats
