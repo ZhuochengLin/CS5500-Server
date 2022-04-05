@@ -7,7 +7,6 @@ import {Express, NextFunction, Request, Response} from "express";
 import TuitControllerI from "../interfaces/TuitControllerI";
 import {EmptyTuitError} from "../errors/CustomErrors";
 import AuthenticationController from "./AuthenticationController";
-import CloudinaryController from "./CloudinaryController";
 
 const multer = require("multer");
 const memoStorage = multer.memoryStorage();
@@ -32,7 +31,6 @@ const upload = multer({storage: memoStorage});
 export default class TuitController implements TuitControllerI {
     private static tuitDao: TuitDao = TuitDao.getInstance();
     private static tuitController: TuitController | null = null;
-    private static cloudinaryController: CloudinaryController = CloudinaryController.getInstance();
 
     /**
      * Creates singleton controller instance
@@ -110,13 +108,6 @@ export default class TuitController implements TuitControllerI {
         if (!tuit.tuit) {
             next(new EmptyTuitError());
             return;
-        }
-        let mediaUrls = [];
-        try {
-            mediaUrls = await TuitController.cloudinaryController.uploadMedia(req);
-        } catch (e) {
-            next(e);
-            return
         }
         // TODO: add media urls to tuit
         TuitController.tuitDao.createTuitByUser(userId, tuit)
