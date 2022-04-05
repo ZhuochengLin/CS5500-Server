@@ -5,6 +5,7 @@
 import TuitModel from "../mongoose/tuits/TuitModel";
 import Tuit from "../models/tuits/Tuit";
 import TuitDaoI from "../interfaces/TuitDaoI";
+import {IMAGE_FIELD, VIDEO_FIELD} from "../utils/constants";
 
 /**
  * @class UserDao Implements Data Access Object managing data storage
@@ -48,4 +49,10 @@ export default class TuitDao implements TuitDaoI{
         TuitModel.deleteOne({_id: tid});
     deleteAllTuits = async (): Promise<any> =>
         TuitModel.deleteMany({});
+
+    findTuitsWithMediaByUser = async (uid: string): Promise<Tuit[]> => {
+        const userTuits = await this.findAllTuitsByUser(uid);
+        return userTuits.filter((t) => t[IMAGE_FIELD].length > 0 || t[VIDEO_FIELD]);
+    }
+
 }

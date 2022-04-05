@@ -5,7 +5,7 @@ const TuitSchema = new mongoose.Schema<Tuit>({
     postedBy: { type: Schema.Types.ObjectId, ref: "UserModel" },
     postedOn: { type: Date, default: Date.now },
     image: [String],
-    video: String,
+    video: {type: String, default: ""},
     avatarLogo: String,
     imageOverlay: String,
     stats: {

@@ -5,8 +5,10 @@ import TuitDao from "../daos/TuitDao";
 import Tuit from "../models/tuits/Tuit";
 import {Express, NextFunction, Request, Response} from "express";
 import TuitControllerI from "../interfaces/TuitControllerI";
-import {EmptyTuitError} from "../errors/CustomErrors";
+import {EmptyTuitError, NoSuchUserError} from "../errors/CustomErrors";
 import AuthenticationController from "./AuthenticationController";
+import CloudinaryController from "./CloudinaryController";
+import UserDao from "../daos/UserDao";
 
 const multer = require("multer");
 const memoStorage = multer.memoryStorage();
@@ -29,8 +31,11 @@ const upload = multer({storage: memoStorage});
  * RESTful Web service API
  */
 export default class TuitController implements TuitControllerI {
+
+    private static userDao: UserDao = UserDao.getInstance();
     private static tuitDao: TuitDao = TuitDao.getInstance();
     private static tuitController: TuitController | null = null;
+    private static cloudinaryController: CloudinaryController = CloudinaryController.getInstance();
 
     /**
      * Creates singleton controller instance
@@ -45,11 +50,12 @@ export default class TuitController implements TuitControllerI {
             app.get("/api/users/:uid/tuits", TuitController.tuitController.findAllTuitsByUser);
             app.get("/api/tuits/:tid", TuitController.tuitController.findTuitById);
             app.post("/api/users/:uid/tuits",
-                upload.fields([{name: "images", maxCount: 6}, {name: "video", maxCount: 1}]),
+                upload.fields([{name: "image", maxCount: 6}, {name: "video", maxCount: 1}]),
                 TuitController.tuitController.createTuitByUser);
             app.put("/api/tuits/:tid", TuitController.tuitController.updateTuit);
             app.delete("/api/tuits/:tid", TuitController.tuitController.deleteTuit);
-            app.delete("/api/tuits", TuitController.tuitController.deleteAllTuis)
+            app.delete("/api/tuits", TuitController.tuitController.deleteAllTuits);
+            app.get("/api/users/:uid/tuits-with-media", TuitController.tuitController.findTuitsWithMediaByUser);
         }
         return TuitController.tuitController;
     }
@@ -104,13 +110,24 @@ export default class TuitController implements TuitControllerI {
      */
     createTuitByUser = async (req: Request, res: Response, next: NextFunction) => {
         let userId = AuthenticationController.getUserId(req, next);
+        const existingUser = await TuitController.userDao.findUserById(userId);
+        if (!existingUser) {
+            next(new NoSuchUserError());
+            return;
+        }
         const tuit = req.body;
         if (!tuit.tuit) {
             next(new EmptyTuitError());
             return;
         }
-        // TODO: add media urls to tuit
-        TuitController.tuitDao.createTuitByUser(userId, tuit)
+        let media = {};
+        try {
+            media = await TuitController.cloudinaryController.uploadMedia(req);
+        } catch (e) {
+            next(e);
+            return
+        }
+        TuitController.tuitDao.createTuitByUser(userId, {...tuit, ...media})
             .then((tuit: Tuit) => res.json(tuit))
             .catch(next);
     }
@@ -123,6 +140,7 @@ export default class TuitController implements TuitControllerI {
      * @param {NextFunction} next Error handling
      */
     updateTuit = (req: Request, res: Response, next: NextFunction) => {
+        // TODO: authentication
         TuitController.tuitDao.updateTuit(req.params.tid, req.body)
             .then((status) => res.send(status))
             .catch(next);
@@ -136,12 +154,21 @@ export default class TuitController implements TuitControllerI {
      * @param {NextFunction} next Error handling
      */
     deleteTuit = (req: Request, res: Response, next: NextFunction) =>
+        // TODO: authentication
         TuitController.tuitDao.deleteTuit(req.params.tid)
             .then((status) => res.send(status))
             .catch(next);
 
-    deleteAllTuis = (req: Request, res: Response) => {
+    deleteAllTuits = (req: Request, res: Response) => {
+        // TODO: authentication
         TuitController.tuitDao.deleteAllTuits()
             .then((status) => res.json(status));
+    }
+
+    findTuitsWithMediaByUser = (req: Request, res: Response, next: NextFunction) => {
+        let userId = AuthenticationController.getUserId(req, next);
+        TuitController.tuitDao.findTuitsWithMediaByUser(userId)
+            .then((tuits) => res.json(tuits))
+            .catch(next);
     }
 };
