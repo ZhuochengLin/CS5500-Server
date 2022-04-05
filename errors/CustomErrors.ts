@@ -1,6 +1,8 @@
 /**
  * An error class for "user does not exist" error
  */
+import {Error} from "mongoose";
+
 export class NoSuchUserError extends Error {
 
     constructor() {
@@ -65,14 +67,6 @@ export class EmptyTuitError extends Error {
 
 export class InvalidInputError extends Error {}
 
-export class EmptyMediaError extends Error {
-
-    constructor(msg: string = "No media content is found") {
-        super(msg);
-    }
-
-}
-
 export class MultiTypeMediaError extends Error {
 
     constructor(msg: string = "Received both image and video content") {
@@ -81,9 +75,9 @@ export class MultiTypeMediaError extends Error {
 
 }
 
-export class UnsupportedMediaError extends Error {
+export class MediaContentExceedsLimitError extends Error {
 
-    constructor(msg: string = "Only image or video content are supported") {
+    constructor(msg: string = "Received media content that exceeds limit.") {
         super(msg);
     }
 
