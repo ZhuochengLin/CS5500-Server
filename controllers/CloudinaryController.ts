@@ -1,6 +1,7 @@
 import {Request} from "express";
 import {MultiTypeMediaError} from "../errors/CustomErrors";
 import CloudinaryDao from "../daos/CloudinaryDao";
+import Media from "../models/tuits/Media";
 
 export default class CloudinaryController {
 
@@ -17,8 +18,8 @@ export default class CloudinaryController {
     private constructor() {
     }
 
-    uploadMedia = async (req: Request): Promise<any> => {
-        const media = {"image": null, "video": null};
+    uploadMedia = async (req: Request): Promise<Media> => {
+        const media = {"image": [], "video": []};
         const files = req.files;
         if (!files) {
             return Promise.resolve(media);

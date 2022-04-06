@@ -5,10 +5,17 @@ import TuitDao from "../daos/TuitDao";
 import Tuit from "../models/tuits/Tuit";
 import {Express, NextFunction, Request, Response} from "express";
 import TuitControllerI from "../interfaces/TuitControllerI";
-import {EmptyTuitError, NoPermissionError, NoSuchTuitError, NoSuchUserError} from "../errors/CustomErrors";
+import {
+    EmptyTuitError,
+    MediaContentExceedsLimitError,
+    NoPermissionError,
+    NoSuchTuitError,
+    NoSuchUserError
+} from "../errors/CustomErrors";
 import AuthenticationController from "./AuthenticationController";
 import CloudinaryController from "./CloudinaryController";
 import UserDao from "../daos/UserDao";
+import {IMAGE_FIELD, VIDEO_FIELD} from "../utils/constants";
 
 const multer = require("multer");
 const memoStorage = multer.memoryStorage();
@@ -52,7 +59,9 @@ export default class TuitController implements TuitControllerI {
             app.post("/api/users/:uid/tuits",
                 upload.fields([{name: "image", maxCount: 6}, {name: "video", maxCount: 1}]),
                 TuitController.tuitController.createTuitByUser);
-            app.put("/api/users/:uid/tuits/:tid", TuitController.tuitController.updateTuit);
+            app.put("/api/users/:uid/tuits/:tid",
+                upload.fields([{name: "image", maxCount: 6}, {name: "video", maxCount: 1}]),
+                TuitController.tuitController.updateTuit);
             app.delete("/api/tuits/:tid", TuitController.tuitController.deleteTuit);
             app.delete("/api/tuits", TuitController.tuitController.deleteAllTuits);
             app.get("/api/users/:uid/tuits-with-media", TuitController.tuitController.findTuitsWithMediaByUser);
@@ -134,7 +143,7 @@ export default class TuitController implements TuitControllerI {
             next(new EmptyTuitError());
             return;
         }
-        let media = {};
+        let media;
         try {
             media = await TuitController.cloudinaryController.uploadMedia(req);
         } catch (e) {
@@ -165,7 +174,34 @@ export default class TuitController implements TuitControllerI {
         const tuitId = req.params.tid;
         const userOwnsTuit = await TuitController.tuitDao.findTuitOwnedByUser(userId, tuitId);
         if (userOwnsTuit) {
-            TuitController.tuitDao.updateTuit(tuitId, req.body)
+            let media;
+            try {
+                media = await TuitController.cloudinaryController.uploadMedia(req);
+            } catch (e) {
+                next(e);
+                return
+            }
+            // replace old media with new media
+            let newTuit = req.body;
+            // only update media when request has media fields
+            if (IMAGE_FIELD in newTuit || VIDEO_FIELD in newTuit) {
+                let newImage = newTuit.image ? newTuit.image : [];
+                let newVideo = newTuit.video ? newTuit.image : [];
+                newImage = Array.prototype.concat(newImage, media.image);
+                newVideo = Array.prototype.concat(newVideo, media.video);
+                // both image and video
+                if (newImage.length > 0 && newVideo.length > 0) {
+                    next(new MediaContentExceedsLimitError());
+                    return;
+                }
+                // 6 images or 1 video
+                if (newImage.length > 6 || newVideo.length > 1) {
+                    next(new MediaContentExceedsLimitError());
+                    return;
+                }
+                newTuit = {...newTuit, image: newImage, video: newVideo};
+            }
+            TuitController.tuitDao.updateTuit(tuitId, newTuit)
                 .then((status) => res.send(status))
                 .catch(next);
         } else {
