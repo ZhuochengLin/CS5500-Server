@@ -19,3 +19,9 @@ data that belongs to him/her. An administrator can do anything.
 * PUT ```/api/users/:uid/tuits/:tid``` Update tuit
 * DELETE ```/api/tuits/:tid``` Delete tuit by id
 * DELETE ```/api/tuits``` Delete all tuits
+
+### likes
+* GET ```/api/likes``` Finf all likes
+* GET ```/api/users/:uid/likes``` Find all tuits liked by user
+* PUT ```/api/users/:uid/likes/:tid``` User toggles likes a tuit
+
