@@ -102,17 +102,16 @@ export default class TuitController implements TuitControllerI {
      * @param {NextFunction} next Error handling
      */
     findAllTuitsByUser = async (req: Request, res: Response, next: NextFunction) => {
-        let userId, profile;
-        try {
-            profile = AuthenticationController.checkLogin(req);
-            userId = await AuthenticationController.getUserId(req, profile);
-        } catch (e) {
-            next(e)
-            return;
-        }
+        let profile, userId;
+        userId = req.params.uid;
         if (userId === MY) {
-            next(new InvalidInputError("Admin account does not have tuits"));
-            return;
+            try {
+                profile = AuthenticationController.checkLogin(req);
+                userId = profile._id;
+            } catch (e) {
+                next(e);
+                return;
+            }
         }
         TuitController.tuitDao.findAllTuitsByUser(userId)
             .then((tuits: Tuit[]) => res.json(tuits))
