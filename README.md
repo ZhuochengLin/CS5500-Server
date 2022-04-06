@@ -1,5 +1,7 @@
 # Express Server for CS5500 Project
 ## API Endpoint
+All endpoints that can create/update/delete data now need a logged-in user to use. A normal user can only manipulate 
+data that belongs to him/her. An administrator can do anything.
 ### users
 * GET ```/api/users``` Find all users
 * GET ```/api/users/:uid``` Find user by id
