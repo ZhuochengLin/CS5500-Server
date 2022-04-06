@@ -6,7 +6,8 @@ import User from "../models/users/User";
 import {Express, NextFunction, Request, Response} from "express";
 import UserControllerI from "../interfaces/UserControllerI";
 import AuthenticationController from "./AuthenticationController";
-import {NoPermissionError} from "../errors/CustomErrors";
+import {InvalidInputError, NoPermissionError} from "../errors/CustomErrors";
+import {MY} from "../utils/constants";
 
 /**
  * @class UserController Implements RESTful Web service API for users resource.
@@ -122,6 +123,10 @@ export default class UserController implements UserControllerI {
             next(e)
             return;
         }
+        if (userId === MY) {
+            next(new InvalidInputError("Cannot update admin account."))
+            return;
+        }
         UserController.userDao.updateUser(userId, req.body)
             .then((status) => res.send(status)).catch(next);
     }
@@ -143,8 +148,13 @@ export default class UserController implements UserControllerI {
             return
         }
         const isAdmin = await AuthenticationController.isAdmin(profile.username);
+        const userId = req.params.uid;
+        if (userId === MY) {
+            next(new InvalidInputError("Cannot delete admin account."))
+            return;
+        }
         if (isAdmin) {
-            UserController.userDao.deleteUser(req.params.uid)
+            UserController.userDao.deleteUser(userId)
                 .then((status) => res.send(status))
                 .catch(next);
         } else {

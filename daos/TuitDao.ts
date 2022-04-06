@@ -6,7 +6,6 @@ import TuitModel from "../mongoose/tuits/TuitModel";
 import Tuit from "../models/tuits/Tuit";
 import TuitDaoI from "../interfaces/TuitDaoI";
 import {IMAGE_FIELD, VIDEO_FIELD} from "../utils/constants";
-import {Model} from "mongoose";
 
 /**
  * @class UserDao Implements Data Access Object managing data storage
@@ -31,7 +30,7 @@ export default class TuitDao implements TuitDaoI{
             .sort({'postedOn': -1})
             .populate("postedBy")
             .exec();
-    findTuitById = async (tid: string): Promise<any> =>
+    findTuitById = async (tid: string): Promise<Tuit | null> =>
         TuitModel.findById(tid)
             .populate("postedBy")
             .exec();

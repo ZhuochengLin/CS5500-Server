@@ -6,7 +6,7 @@ import Tuit from "../models/tuits/Tuit";
 import {Express, NextFunction, Request, Response} from "express";
 import TuitControllerI from "../interfaces/TuitControllerI";
 import {
-    EmptyTuitError,
+    EmptyTuitError, InvalidInputError,
     MediaContentExceedsLimitError,
     NoPermissionError,
     NoSuchTuitError,
@@ -15,7 +15,7 @@ import {
 import AuthenticationController from "./AuthenticationController";
 import CloudinaryController from "./CloudinaryController";
 import UserDao from "../daos/UserDao";
-import {IMAGE_FIELD, VIDEO_FIELD} from "../utils/constants";
+import {IMAGE_FIELD, MY, VIDEO_FIELD} from "../utils/constants";
 
 const multer = require("multer");
 const memoStorage = multer.memoryStorage();
@@ -90,7 +90,7 @@ export default class TuitController implements TuitControllerI {
      */
     findTuitById = (req: Request, res: Response, next: NextFunction) =>
         TuitController.tuitDao.findTuitById(req.params.tid)
-            .then((tuit: Tuit) => res.json(tuit))
+            .then((tuit) => res.json(tuit))
             .catch(next);
 
     /**
@@ -108,6 +108,10 @@ export default class TuitController implements TuitControllerI {
             userId = await AuthenticationController.getUserId(req, profile);
         } catch (e) {
             next(e)
+            return;
+        }
+        if (userId === MY) {
+            next(new InvalidInputError("Admin account does not have tuits"));
             return;
         }
         TuitController.tuitDao.findAllTuitsByUser(userId)
@@ -131,6 +135,10 @@ export default class TuitController implements TuitControllerI {
             userId = await AuthenticationController.getUserId(req, profile);
         } catch (e) {
             next(e)
+            return;
+        }
+        if (userId === MY) {
+            next(new InvalidInputError("Admin account cannot create tuit"));
             return;
         }
         const existingUser = await TuitController.userDao.findUserById(userId);
@@ -169,6 +177,10 @@ export default class TuitController implements TuitControllerI {
             userId = await AuthenticationController.getUserId(req, profile);
         } catch (e) {
             next(e)
+            return;
+        }
+        if (userId === MY) {
+            next(new InvalidInputError("Admin account does not have tuits."));
             return;
         }
         const tuitId = req.params.tid;
@@ -217,22 +229,29 @@ export default class TuitController implements TuitControllerI {
      * @param {NextFunction} next Error handling
      */
     deleteTuit = async (req: Request, res: Response, next: NextFunction) => {
-        let userId, profile;
+        let profile;
         try {
             profile = AuthenticationController.checkLogin(req);
-            userId = await AuthenticationController.getUserId(req, profile);
         } catch (e) {
             next(e)
             return;
         }
         const tuitId = req.params.tid;
-        const userOwnsTuit = await TuitController.tuitDao.findTuitOwnedByUser(userId, tuitId);
-        if (userOwnsTuit) {
-            TuitController.tuitDao.deleteTuit(req.params.tid)
+        const userId = profile._id;
+        const isAdmin = await AuthenticationController.isAdmin(profile.username);
+        if (isAdmin) {
+            TuitController.tuitDao.deleteTuit(tuitId)
                 .then((status) => res.send(status))
                 .catch(next);
         } else {
-            next(new NoPermissionError());
+            const userOwnsTuit = await TuitController.tuitDao.findTuitOwnedByUser(userId, tuitId);
+            if (userOwnsTuit) {
+                TuitController.tuitDao.deleteTuit(req.params.tid)
+                    .then((status) => res.send(status))
+                    .catch(next);
+            } else {
+                next(new NoPermissionError());
+            }
         }
     }
 
@@ -260,6 +279,10 @@ export default class TuitController implements TuitControllerI {
             userId = await AuthenticationController.getUserId(req, profile);
         } catch (e) {
             next(e)
+            return;
+        }
+        if (userId === MY) {
+            next(new InvalidInputError("Admin account does not have tuits."));
             return;
         }
         TuitController.tuitDao.findTuitsWithMediaByUser(userId)

@@ -18,6 +18,7 @@ import mongoose from "mongoose";
 import {config} from "dotenv";
 import {LogErrors} from "./errors/LogErrors";
 import {ErrorHandler} from "./errors/ErrorHandler";
+import LikeController from "./controllers/LikeController";
 const cors = require("cors");
 const session = require("express-session");
 
@@ -64,6 +65,7 @@ app.get('/', (req: Request, res: Response) =>
 const userController = UserController.getInstance(app);
 const tuitController = TuitController.getInstance(app);
 const authenticationController = AuthenticationController.getInstance(app);
+const likeController = LikeController.getInstance(app);
 
 /**
  * Start a server listening at port 4000 locally
