@@ -1,7 +1,6 @@
 /**
  * An error class for "user does not exist" error
  */
-import {Error} from "mongoose";
 
 export class NoSuchUserError extends Error {
 
@@ -27,7 +26,7 @@ export class NoSuchTuitError extends Error {
 export class NoUserLoggedInError extends Error {
 
     constructor() {
-        super("No user is logged in.");
+        super("Please login first.");
     }
 
 }
@@ -65,7 +64,13 @@ export class EmptyTuitError extends Error {
 
 }
 
-export class InvalidInputError extends Error {}
+export class InvalidInputError extends Error {
+
+    constructor(msg: string = "Received invalid inputs.") {
+        super(msg);
+    }
+
+}
 
 export class MultiTypeMediaError extends Error {
 
@@ -78,6 +83,14 @@ export class MultiTypeMediaError extends Error {
 export class MediaContentExceedsLimitError extends Error {
 
     constructor(msg: string = "Received media content that exceeds limit.") {
+        super(msg);
+    }
+
+}
+
+export class NoPermissionError extends Error {
+
+    constructor(msg: string = "No permission on this operation.") {
         super(msg);
     }
 

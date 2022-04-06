@@ -5,6 +5,8 @@ import UserDao from "../daos/UserDao";
 import User from "../models/users/User";
 import {Express, NextFunction, Request, Response} from "express";
 import UserControllerI from "../interfaces/UserControllerI";
+import AuthenticationController from "./AuthenticationController";
+import {NoPermissionError} from "../errors/CustomErrors";
 
 /**
  * @class UserController Implements RESTful Web service API for users resource.
@@ -71,7 +73,7 @@ export default class UserController implements UserControllerI {
      */
     findUserById = (req: Request, res: Response, next: NextFunction) =>
         UserController.userDao.findUserById(req.params.uid)
-            .then((user: User) => res.json(user))
+            .then((user) => res.json(user))
             .catch(next);
     
     /**
@@ -84,10 +86,24 @@ export default class UserController implements UserControllerI {
      * database
      * @param {NextFunction} next Error handling
      */
-    createUser = (req: Request, res: Response, next: NextFunction) =>
-        UserController.userDao.createUser(req.body)
-            .then((user: User) => res.json(user))
-            .catch(next);
+    createUser = async (req: Request, res: Response, next: NextFunction) => {
+        let profile;
+        try {
+            profile = AuthenticationController.checkLogin(req);
+        } catch (e) {
+            next(e);
+            return
+        }
+        const isAdmin = await AuthenticationController.isAdmin(profile.username);
+        if (isAdmin) {
+            UserController.userDao.createUser(req.body)
+                .then((user: User) => res.json(user))
+                .catch(next);
+        } else {
+            next(new NoPermissionError());
+            return
+        }
+    }
     
     /**
      * Modifies an existing user instance
@@ -97,9 +113,18 @@ export default class UserController implements UserControllerI {
      * on whether updating a user was successful or not
      * @param {NextFunction} next Error handling
      */
-    updateUser = (req: Request, res: Response, next:NextFunction) =>
-        UserController.userDao.updateUser(req.params.uid, req.body)
+    updateUser = async (req: Request, res: Response, next: NextFunction) => {
+        let userId, profile;
+        try {
+            profile = AuthenticationController.checkLogin(req);
+            userId = await AuthenticationController.getUserId(req, profile);
+        } catch (e) {
+            next(e)
+            return;
+        }
+        UserController.userDao.updateUser(userId, req.body)
             .then((status) => res.send(status)).catch(next);
+    }
     
     /**
      * Removes a user instance from the database
@@ -109,22 +134,45 @@ export default class UserController implements UserControllerI {
      * on whether deleting a user was successful or not
      * @param {NextFunction} next Error handling
      */
-    deleteUser = (req: Request, res: Response, next:NextFunction) =>
-        UserController.userDao.deleteUser(req.params.uid)
-            .then((status) => res.send(status))
-            .catch(next);
+    deleteUser = async (req: Request, res: Response, next: NextFunction) => {
+        let profile;
+        try {
+            profile = AuthenticationController.checkLogin(req);
+        } catch (e) {
+            next(e);
+            return
+        }
+        const isAdmin = await AuthenticationController.isAdmin(profile.username);
+        if (isAdmin) {
+            UserController.userDao.deleteUser(req.params.uid)
+                .then((status) => res.send(status))
+                .catch(next);
+        } else {
+            next(new NoPermissionError());
+        }
+    }
     
     /**
      * Removes all user instances from the database. Useful for testing
      * @param {Request} req Represents request from client 
      * @param {Response} res Represents response to client, including status
      * on whether deleting all users was successful or not
+     * @param {NextFunction} next Error handling
      */
-    deleteAllUsers = (req: Request, res: Response) =>
-        UserController.userDao.deleteAllUsers()
-            .then((status) => res.send(status));
-
-    deleteUsersByUsername = (req: Request, res: Response) =>
-      UserController.userDao.deleteUsersByUsername(req.params.username)
-        .then(status => res.send(status));
+    deleteAllUsers = async (req: Request, res: Response, next: NextFunction) => {
+        let profile;
+        try {
+            profile = AuthenticationController.checkLogin(req);
+        } catch (e) {
+            next(e);
+            return
+        }
+        const isAdmin = await AuthenticationController.isAdmin(profile.username);
+        if (isAdmin) {
+            UserController.userDao.deleteAllUsers()
+                .then((status) => res.send(status));
+        } else {
+            next(new NoPermissionError());
+        }
+    }
 };

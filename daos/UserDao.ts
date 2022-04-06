@@ -6,6 +6,9 @@ import UserModel from "../mongoose/users/UserModel";
 import User from "../models/users/User";
 import UserDaoI from "../interfaces/UserDaoI";
 
+const bcrypt = require('bcrypt');
+const saltRounds = 10;
+
 /**
  * @class UserDao Implements Data Access Object managing data storage
  * of Users
@@ -40,7 +43,7 @@ export default class UserDao implements UserDaoI {
      * @param {string} uid User's primary key
      * @returns Promise To be notified when user is retrieved from the database
      */
-    findUserById = async (uid: string): Promise<any> =>
+    findUserById = async (uid: string): Promise<User | null> =>
         UserModel.findById(uid);
 
     /**
@@ -50,15 +53,18 @@ export default class UserDao implements UserDaoI {
      * @returns Promise To be notified when user is retrieved from the database
      */
     findUserByUsername = async (username: string): Promise<any> =>
-        UserModel.findOne({username});
+        UserModel.findOne({username: username});
 
     /**
      * Inserts user instance into the database
      * @param {User} user Instance to be inserted into the database
      * @returns Promise To be notified when user is inserted into the database
      */
-    createUser = async (user: User): Promise<User> =>
-        UserModel.create(user);
+    createUser = async (user: User): Promise<User> => {
+        const password = user.password;
+        user.password = await bcrypt.hash(password, saltRounds);
+        return UserModel.create(user);
+    }
 
     /**
      * Updates user with new values in database

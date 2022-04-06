@@ -6,6 +6,7 @@ import TuitModel from "../mongoose/tuits/TuitModel";
 import Tuit from "../models/tuits/Tuit";
 import TuitDaoI from "../interfaces/TuitDaoI";
 import {IMAGE_FIELD, VIDEO_FIELD} from "../utils/constants";
+import {Model} from "mongoose";
 
 /**
  * @class UserDao Implements Data Access Object managing data storage
@@ -52,7 +53,11 @@ export default class TuitDao implements TuitDaoI{
 
     findTuitsWithMediaByUser = async (uid: string): Promise<Tuit[]> => {
         const userTuits = await this.findAllTuitsByUser(uid);
-        return userTuits.filter((t) => t[IMAGE_FIELD].length > 0 || t[VIDEO_FIELD]);
+        return userTuits.filter((t) => t[IMAGE_FIELD].length > 0 || t[VIDEO_FIELD].length > 0);
+    }
+
+    findTuitOwnedByUser = async (uid: string, tid: string): Promise<Tuit | null> => {
+        return TuitModel.findOne({postedBy: uid, _id: tid});
     }
 
 }

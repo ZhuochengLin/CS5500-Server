@@ -1,14 +1,22 @@
 import {Express, NextFunction, Request, Response} from "express";
 import UserDao from "../daos/UserDao";
-import {UserAlreadyExistsError, InvalidInputError, NoSuchUserError, NoUserLoggedInError} from "../errors/CustomErrors";
+import {
+    UserAlreadyExistsError,
+    InvalidInputError,
+    NoSuchUserError,
+    NoUserLoggedInError,
+    IncorrectCredentialError
+} from "../errors/CustomErrors";
+import AdminDao from "../daos/AdminDao";
+import User from "../models/users/User";
 
 const bcrypt = require('bcrypt');
-const saltRounds = 10;
 
 export default class AuthenticationController {
 
     private static authenticationController: AuthenticationController | null = null;
     private static userDao: UserDao = UserDao.getInstance();
+    private static adminDao: AdminDao = AdminDao.getInstance();
 
     public static getInstance = (app: Express) => {
         if (AuthenticationController.authenticationController === null) {
@@ -25,41 +33,41 @@ export default class AuthenticationController {
 
         console.log("==> login")
         console.log("==> req.session")
-        console.log(req.session)
 
         const user = req.body;
         if (!user.username || !user.password) {
-            next(new InvalidInputError("No username or password"));
+            next(new IncorrectCredentialError());
             return;
         }
         const username = user.username;
         const password = user.password;
         const existingUser = await AuthenticationController.userDao
             .findUserByUsername(username);
+        if (!existingUser) {
+            next(new IncorrectCredentialError())
+            return;
+        }
         const match = await bcrypt.compare(password, existingUser.password);
         if (match) {
             existingUser.password = '******';
             // @ts-ignore
             req.session['profile'] = existingUser;
+            console.log(req.session)
             res.json(existingUser);
         } else {
-            next(new NoSuchUserError());
+            next(new IncorrectCredentialError());
         }
     }
 
     register = async (req: Request, res: Response, next: NextFunction) => {
         console.log("==> register")
         console.log("==> req.session")
-        console.log(req.session)
 
         const newUser = req.body;
         if (!newUser.username || !newUser.password) {
             next(new InvalidInputError("No username or password"));
             return
         }
-        const password = newUser.password;
-        newUser.password = await bcrypt.hash(password, saltRounds);
-
         const existingUser = await AuthenticationController.userDao
             .findUserByUsername(req.body.username);
         if (existingUser) {
@@ -71,6 +79,7 @@ export default class AuthenticationController {
         insertedUser.password = '******';
         // @ts-ignore
         req.session['profile'] = insertedUser;
+        console.log(req.session)
         res.json(insertedUser);
     }
 
@@ -90,15 +99,27 @@ export default class AuthenticationController {
         res.sendStatus(200);
     }
 
-    public static getUserId = (req: Request, next: NextFunction) => {
+    public static checkLogin = (req: Request): User => {
         // @ts-ignore
-        let userId = req.params.uid === "my" && req.session['profile'] ?
-            // @ts-ignore
-            req.session['profile']._id : req.params.uid;
-        if (userId === "my") {
-            next(new NoUserLoggedInError());
-            return;
+        const profile = req.session["profile"];
+        if (!profile) {
+            throw new NoUserLoggedInError();
         }
-        return userId;
+        return profile;
     }
+
+    public static getUserId = async (req: Request, profile: User): Promise<string> => {
+        const isAdmin = await AuthenticationController.adminDao.findAdmin(profile.username);
+        if (isAdmin) {
+            return req.params.uid;
+        } else {
+            return profile._id;
+        }
+    }
+
+    public static isAdmin = async (uname: string): Promise<boolean> => {
+        const isAdmin = await AuthenticationController.adminDao.findAdmin(uname);
+        return !!isAdmin;
+    }
+
 };
