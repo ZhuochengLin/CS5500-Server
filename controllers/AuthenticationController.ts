@@ -33,7 +33,6 @@ export default class AuthenticationController {
 
         console.log("==> login")
         console.log("==> req.session")
-        console.log(req.session)
 
         const user = req.body;
         if (!user.username || !user.password) {
@@ -53,6 +52,7 @@ export default class AuthenticationController {
             existingUser.password = '******';
             // @ts-ignore
             req.session['profile'] = existingUser;
+            console.log(req.session)
             res.json(existingUser);
         } else {
             next(new IncorrectCredentialError());
@@ -62,7 +62,6 @@ export default class AuthenticationController {
     register = async (req: Request, res: Response, next: NextFunction) => {
         console.log("==> register")
         console.log("==> req.session")
-        console.log(req.session)
 
         const newUser = req.body;
         if (!newUser.username || !newUser.password) {
@@ -80,6 +79,7 @@ export default class AuthenticationController {
         insertedUser.password = '******';
         // @ts-ignore
         req.session['profile'] = insertedUser;
+        console.log(req.session)
         res.json(insertedUser);
     }
 

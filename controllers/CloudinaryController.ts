@@ -31,7 +31,7 @@ export default class CloudinaryController {
             await CloudinaryController.cloudinaryDao.uploadMedia(files["image"], 6) : [];
         // @ts-ignore
         media.video = "video" in files ?
-            (await CloudinaryController.cloudinaryDao.uploadMedia(files["video"], 1))[0] : "";
+            (await CloudinaryController.cloudinaryDao.uploadMedia(files["video"], 1)) : [];
         return Promise.resolve(media);
     }
 
