@@ -6,5 +6,5 @@ export default interface UserControllerI {
     createUser (req: Request, res: Response, next: NextFunction): void;
     updateUser (req: Request, res: Response, next:NextFunction): void;
     deleteUser (req: Request, res: Response, next:NextFunction): void;
-    deleteAllUsers (req: Request, res: Response): void;
+    deleteAllUsers (req: Request, res: Response, next: NextFunction): void;
 };

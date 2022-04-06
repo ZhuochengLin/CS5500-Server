@@ -5,7 +5,7 @@ import TuitDao from "../daos/TuitDao";
 import Tuit from "../models/tuits/Tuit";
 import {Express, NextFunction, Request, Response} from "express";
 import TuitControllerI from "../interfaces/TuitControllerI";
-import {EmptyTuitError, NoSuchUserError} from "../errors/CustomErrors";
+import {EmptyTuitError, NoPermissionError, NoSuchTuitError, NoSuchUserError} from "../errors/CustomErrors";
 import AuthenticationController from "./AuthenticationController";
 import CloudinaryController from "./CloudinaryController";
 import UserDao from "../daos/UserDao";
@@ -52,7 +52,7 @@ export default class TuitController implements TuitControllerI {
             app.post("/api/users/:uid/tuits",
                 upload.fields([{name: "image", maxCount: 6}, {name: "video", maxCount: 1}]),
                 TuitController.tuitController.createTuitByUser);
-            app.put("/api/tuits/:tid", TuitController.tuitController.updateTuit);
+            app.put("/api/users/:uid/tuits/:tid", TuitController.tuitController.updateTuit);
             app.delete("/api/tuits/:tid", TuitController.tuitController.deleteTuit);
             app.delete("/api/tuits", TuitController.tuitController.deleteAllTuits);
             app.get("/api/users/:uid/tuits-with-media", TuitController.tuitController.findTuitsWithMediaByUser);
@@ -92,8 +92,15 @@ export default class TuitController implements TuitControllerI {
      * body formatted as JSON arrays containing the tuit objects
      * @param {NextFunction} next Error handling
      */
-    findAllTuitsByUser = (req: Request, res: Response, next: NextFunction) => {
-        let userId = AuthenticationController.getUserId(req, next);
+    findAllTuitsByUser = async (req: Request, res: Response, next: NextFunction) => {
+        let userId, profile;
+        try {
+            profile = AuthenticationController.checkLogin(req);
+            userId = await AuthenticationController.getUserId(req, profile);
+        } catch (e) {
+            next(e)
+            return;
+        }
         TuitController.tuitDao.findAllTuitsByUser(userId)
             .then((tuits: Tuit[]) => res.json(tuits))
             .catch(next);
@@ -109,7 +116,14 @@ export default class TuitController implements TuitControllerI {
      * @param {NextFunction} next Error handling
      */
     createTuitByUser = async (req: Request, res: Response, next: NextFunction) => {
-        let userId = AuthenticationController.getUserId(req, next);
+        let userId, profile;
+        try {
+            profile = AuthenticationController.checkLogin(req);
+            userId = await AuthenticationController.getUserId(req, profile);
+        } catch (e) {
+            next(e)
+            return;
+        }
         const existingUser = await TuitController.userDao.findUserById(userId);
         if (!existingUser) {
             next(new NoSuchUserError());
@@ -139,11 +153,24 @@ export default class TuitController implements TuitControllerI {
      * on whether updating a tuit was successful or not
      * @param {NextFunction} next Error handling
      */
-    updateTuit = (req: Request, res: Response, next: NextFunction) => {
-        // TODO: authentication
-        TuitController.tuitDao.updateTuit(req.params.tid, req.body)
-            .then((status) => res.send(status))
-            .catch(next);
+    updateTuit = async (req: Request, res: Response, next: NextFunction) => {
+        let userId, profile;
+        try {
+            profile = AuthenticationController.checkLogin(req);
+            userId = await AuthenticationController.getUserId(req, profile);
+        } catch (e) {
+            next(e)
+            return;
+        }
+        const tuitId = req.params.tid;
+        const userOwnsTuit = await TuitController.tuitDao.findTuitOwnedByUser(userId, tuitId);
+        if (userOwnsTuit) {
+            TuitController.tuitDao.updateTuit(tuitId, req.body)
+                .then((status) => res.send(status))
+                .catch(next);
+        } else {
+            next(new NoPermissionError());
+        }
     }
 
     /**
@@ -153,22 +180,55 @@ export default class TuitController implements TuitControllerI {
      * on whether deleting a user was successful or not
      * @param {NextFunction} next Error handling
      */
-    deleteTuit = (req: Request, res: Response, next: NextFunction) =>
-        // TODO: authentication
-        TuitController.tuitDao.deleteTuit(req.params.tid)
-            .then((status) => res.send(status))
-            .catch(next);
-
-    deleteAllTuits = (req: Request, res: Response) => {
-        // TODO: authentication
-        TuitController.tuitDao.deleteAllTuits()
-            .then((status) => res.json(status));
+    deleteTuit = async (req: Request, res: Response, next: NextFunction) => {
+        let userId, profile;
+        try {
+            profile = AuthenticationController.checkLogin(req);
+            userId = await AuthenticationController.getUserId(req, profile);
+        } catch (e) {
+            next(e)
+            return;
+        }
+        const tuitId = req.params.tid;
+        const userOwnsTuit = await TuitController.tuitDao.findTuitOwnedByUser(userId, tuitId);
+        if (userOwnsTuit) {
+            TuitController.tuitDao.deleteTuit(req.params.tid)
+                .then((status) => res.send(status))
+                .catch(next);
+        } else {
+            next(new NoPermissionError());
+        }
     }
 
-    findTuitsWithMediaByUser = (req: Request, res: Response, next: NextFunction) => {
-        let userId = AuthenticationController.getUserId(req, next);
+    deleteAllTuits = async (req: Request, res: Response, next: NextFunction) => {
+        let profile;
+        try {
+            profile = AuthenticationController.checkLogin(req);
+        } catch (e) {
+            next(e);
+            return
+        }
+        const isAdmin = await AuthenticationController.isAdmin(profile.username);
+        if (isAdmin) {
+            TuitController.tuitDao.deleteAllTuits()
+                .then((status) => res.json(status));
+        } else {
+            next(new NoPermissionError());
+        }
+    }
+
+    findTuitsWithMediaByUser = async (req: Request, res: Response, next: NextFunction) => {
+        let userId, profile;
+        try {
+            profile = AuthenticationController.checkLogin(req);
+            userId = await AuthenticationController.getUserId(req, profile);
+        } catch (e) {
+            next(e)
+            return;
+        }
         TuitController.tuitDao.findTuitsWithMediaByUser(userId)
             .then((tuits) => res.json(tuits))
             .catch(next);
     }
+
 };

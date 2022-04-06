@@ -1,10 +1,9 @@
 import AccountType from "./AccountType";
 import MaritalStatus from "./MaritalStatus";
 import Location from "./Location";
-import mongoose from "mongoose";
 
 export default interface User {
-    _id?: mongoose.Schema.Types.ObjectId,
+    _id: string,
     username: string,
     password: string,
     email: string,
