@@ -25,7 +25,7 @@ export default class CloudinaryDao {
         const mediaUrls = []
         for (let buffer of mediaBuffers) {
             const response = await CloudinaryDao.cloudinaryUploader.upload(buffer, {resource_type: "auto"});
-            mediaUrls.push(response.url);
+            mediaUrls.push(response.secure_url);
         }
         return mediaUrls;
     }

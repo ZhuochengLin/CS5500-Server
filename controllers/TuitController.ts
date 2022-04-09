@@ -88,10 +88,16 @@ export default class TuitController implements TuitControllerI {
      * body formatted as JSON containing the tuit that matches the user ID
      * @param {NextFunction} next Error handling
      */
-    findTuitById = (req: Request, res: Response, next: NextFunction) =>
-        TuitController.tuitDao.findTuitById(req.params.tid)
+    findTuitById = (req: Request, res: Response, next: NextFunction) => {
+        const tuitId = req.params.tid;
+        if (!AuthenticationController.isValidId(tuitId)) {
+            next(new InvalidInputError("Received invalid id"));
+            return;
+        }
+        TuitController.tuitDao.findTuitById(tuitId)
             .then((tuit) => res.json(tuit))
             .catch(next);
+    }
 
     /**
      * Retrieves all tuits from the database for a particular user and returns
@@ -112,6 +118,10 @@ export default class TuitController implements TuitControllerI {
                 next(e);
                 return;
             }
+        }
+        if (!AuthenticationController.isValidId(userId)) {
+            next(new InvalidInputError("Received invalid id"));
+            return;
         }
         TuitController.tuitDao.findAllTuitsByUser(userId)
             .then((tuits: Tuit[]) => res.json(tuits))
@@ -138,6 +148,10 @@ export default class TuitController implements TuitControllerI {
         }
         if (userId === MY) {
             next(new InvalidInputError("Admin account cannot create tuit"));
+            return;
+        }
+        if (!AuthenticationController.isValidId(userId)) {
+            next(new InvalidInputError("Received invalid id"));
             return;
         }
         const existingUser = await TuitController.userDao.findUserById(userId);
@@ -183,6 +197,10 @@ export default class TuitController implements TuitControllerI {
             return;
         }
         const tuitId = req.params.tid;
+        if (!AuthenticationController.isValidId(userId) || !AuthenticationController.isValidId(tuitId)) {
+            next(new InvalidInputError("Received invalid id"));
+            return;
+        }
         const userOwnsTuit = await TuitController.tuitDao.findTuitOwnedByUser(userId, tuitId);
         if (userOwnsTuit) {
             let media;
@@ -237,6 +255,10 @@ export default class TuitController implements TuitControllerI {
         }
         const tuitId = req.params.tid;
         const userId = profile._id;
+        if (!AuthenticationController.isValidId(userId) || !AuthenticationController.isValidId(tuitId)) {
+            next(new InvalidInputError("Received invalid id"));
+            return;
+        }
         const isAdmin = await AuthenticationController.isAdmin(profile.username);
         if (isAdmin) {
             TuitController.tuitDao.deleteTuit(tuitId)
@@ -282,6 +304,10 @@ export default class TuitController implements TuitControllerI {
         }
         if (userId === MY) {
             next(new InvalidInputError("Admin account does not have tuits."));
+            return;
+        }
+        if (!AuthenticationController.isValidId(userId)) {
+            next(new InvalidInputError("Received invalid id"));
             return;
         }
         TuitController.tuitDao.findTuitsWithMediaByUser(userId)

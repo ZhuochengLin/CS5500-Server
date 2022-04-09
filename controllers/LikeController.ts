@@ -38,6 +38,10 @@ export default class LikeController {
             return;
         }
         const tuitId = req.params.tid;
+        if (!AuthenticationController.isValidId(userId) || !AuthenticationController.isValidId(tuitId)) {
+            next(new InvalidInputError("Received invalid id"));
+            return;
+        }
         const tuit = await LikeController.tuitDao.findTuitById(tuitId);
         if (!tuit) {
             next(new NoSuchTuitError());
@@ -65,6 +69,10 @@ export default class LikeController {
         }
         if (userId === MY) {
             next(new InvalidInputError("Admin account does not have tuits."));
+            return;
+        }
+        if (!AuthenticationController.isValidId(userId)) {
+            next(new InvalidInputError("Received invalid id"));
             return;
         }
         LikeController.likeDao.findAllTuitsLikedByUser(userId)

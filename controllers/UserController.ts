@@ -6,8 +6,10 @@ import User from "../models/users/User";
 import {Express, NextFunction, Request, Response} from "express";
 import UserControllerI from "../interfaces/UserControllerI";
 import AuthenticationController from "./AuthenticationController";
-import {InvalidInputError, NoPermissionError} from "../errors/CustomErrors";
+import {InvalidInputError, NoPermissionError, UserAlreadyExistsError} from "../errors/CustomErrors";
 import {MY} from "../utils/constants";
+
+const ObjectId = require('mongoose').Types.ObjectId;
 
 /**
  * @class UserController Implements RESTful Web service API for users resource.
@@ -72,10 +74,16 @@ export default class UserController implements UserControllerI {
      * body formatted as JSON containing the user that matches the user ID
      * @param {NextFunction} next Error handling
      */
-    findUserById = (req: Request, res: Response, next: NextFunction) =>
-        UserController.userDao.findUserById(req.params.uid)
+    findUserById = (req: Request, res: Response, next: NextFunction) => {
+        const userId = req.params.uid;
+        if (!ObjectId.isValid(userId)) {
+            next(new InvalidInputError("Received invalid id"));
+            return;
+        }
+        UserController.userDao.findUserById(userId)
             .then((user) => res.json(user))
             .catch(next);
+    }
     
     /**
      * Creates a new user instance
@@ -127,7 +135,20 @@ export default class UserController implements UserControllerI {
             next(new InvalidInputError("Cannot update admin account."))
             return;
         }
-        UserController.userDao.updateUser(userId, req.body)
+        if (!ObjectId.isValid(userId)) {
+            next(new InvalidInputError("Received invalid id"));
+            return;
+        }
+        const data = req.body;
+        // duplicate username
+        if (data.username) {
+            const existingUser = await UserController.userDao.findUserByUsername(data.username);
+            if (existingUser && existingUser._id.toString() !== userId) {
+                next(new UserAlreadyExistsError());
+                return;
+            }
+        }
+        UserController.userDao.updateUser(userId, data)
             .then((status) => res.send(status)).catch(next);
     }
     
@@ -154,6 +175,10 @@ export default class UserController implements UserControllerI {
             return;
         }
         if (isAdmin) {
+            if (!ObjectId.isValid(userId)) {
+                next(new InvalidInputError("Received invalid id"));
+                return;
+            }
             UserController.userDao.deleteUser(userId)
                 .then((status) => res.send(status))
                 .catch(next);

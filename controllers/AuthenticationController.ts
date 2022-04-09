@@ -11,6 +11,7 @@ import AdminDao from "../daos/AdminDao";
 import User from "../models/users/User";
 
 const bcrypt = require('bcrypt');
+const ObjectId = require('mongoose').Types.ObjectId;
 
 export default class AuthenticationController {
 
@@ -49,7 +50,7 @@ export default class AuthenticationController {
         }
         const match = await bcrypt.compare(password, existingUser.password);
         if (match) {
-            existingUser.password = '******';
+            existingUser.password = "";
             // @ts-ignore
             req.session['profile'] = existingUser;
             console.log(req.session)
@@ -76,17 +77,30 @@ export default class AuthenticationController {
         }
         const insertedUser = await AuthenticationController.userDao
             .createUser(newUser);
-        insertedUser.password = '******';
+        insertedUser.password = "";
         // @ts-ignore
         req.session['profile'] = insertedUser;
         console.log(req.session)
         res.json(insertedUser);
     }
 
-    profile = (req: Request, res: Response, next: NextFunction) => {
+    profile = async (req: Request, res: Response, next: NextFunction) => {
         // @ts-ignore
-        const profile = req.session['profile'];
+        let profile = req.session['profile'];
         if (profile) {
+            // if logged in
+            const userId = profile._id;
+            const updatedUser = await AuthenticationController.userDao.findUserById(userId);
+            if (updatedUser) {
+                updatedUser.password = "";
+                // @ts-ignore
+                req.session['profile'] = updatedUser;
+                // @ts-ignore
+                profile = req.session['profile'];
+            } else {
+                next(new NoSuchUserError());
+                return;
+            }
             res.json(profile);
         } else {
             next(new NoUserLoggedInError());
@@ -120,6 +134,10 @@ export default class AuthenticationController {
     public static isAdmin = async (uname: string): Promise<boolean> => {
         const isAdmin = await AuthenticationController.adminDao.findAdmin(uname);
         return !!isAdmin;
+    }
+
+    public static isValidId = (id: string): boolean => {
+        return ObjectId.isValid(id);
     }
 
 };
