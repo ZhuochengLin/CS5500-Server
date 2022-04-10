@@ -11,5 +11,5 @@ import {NextFunction, Request, Response} from "express";
  * @param {NextFunction} next Next error handling function
  */
 export function ErrorHandler(err: Error, req: Request, res: Response, next: NextFunction) {
-    res.status(403).send(err.message);
+    res.status(403).send({success: false, error: err.message});
 }
