@@ -51,7 +51,7 @@ export default class TuitController implements TuitControllerI {
      * @return TuitController
      */
     public static getInstance = (app: Express): TuitController => {
-        if(TuitController.tuitController === null) {
+        if (TuitController.tuitController === null) {
             TuitController.tuitController = new TuitController();
             app.get("/api/tuits", TuitController.tuitController.findAllTuits);
             app.get("/api/users/:uid/tuits", TuitController.tuitController.findAllTuitsByUser);
@@ -69,7 +69,8 @@ export default class TuitController implements TuitControllerI {
         return TuitController.tuitController;
     }
 
-    private constructor() {}
+    private constructor() {
+    }
 
     /**
      * Retrieves all tuits from the database and returns an array of tuits.
@@ -80,7 +81,7 @@ export default class TuitController implements TuitControllerI {
     findAllTuits = (req: Request, res: Response) =>
         TuitController.tuitDao.findAllTuits()
             .then((tuits: Tuit[]) => res.json(tuits));
-    
+
     /**
      * @param {Request} req Represents request from client, including path
      * parameter tid identifying the primary key of the tuit to be retrieved
@@ -212,24 +213,21 @@ export default class TuitController implements TuitControllerI {
             }
             // replace old media with new media
             let newTuit = req.body;
-            // only update media when request has media fields
-            if (IMAGE_FIELD in newTuit || VIDEO_FIELD in newTuit) {
-                let newImage = newTuit.image ? newTuit.image : [];
-                let newVideo = newTuit.video ? newTuit.image : [];
-                newImage = Array.prototype.concat(newImage, media.image);
-                newVideo = Array.prototype.concat(newVideo, media.video);
-                // both image and video
-                if (newImage.length > 0 && newVideo.length > 0) {
-                    next(new MediaContentExceedsLimitError());
-                    return;
-                }
-                // 6 images or 1 video
-                if (newImage.length > 6 || newVideo.length > 1) {
-                    next(new MediaContentExceedsLimitError());
-                    return;
-                }
-                newTuit = {...newTuit, image: newImage, video: newVideo};
+            let newImage = newTuit.image ? newTuit.image : [];
+            let newVideo = newTuit.video ? newTuit.video : [];
+            newImage = Array.prototype.concat(newImage, media.image);
+            newVideo = Array.prototype.concat(newVideo, media.video);
+            // both image and video
+            if (newImage.length > 0 && newVideo.length > 0) {
+                next(new MediaContentExceedsLimitError());
+                return;
             }
+            // 6 images or 1 video
+            if (newImage.length > 6 || newVideo.length > 1) {
+                next(new MediaContentExceedsLimitError());
+                return;
+            }
+            newTuit = {...newTuit, image: newImage, video: newVideo};
             TuitController.tuitDao.updateTuit(tuitId, newTuit)
                 .then((status) => res.send(status))
                 .catch(next);
