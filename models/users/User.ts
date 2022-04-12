@@ -7,6 +7,7 @@ export default interface User {
     username: string,
     password: string,
     email: string,
+    joined: Date,
     firstName?: string,
     lastName?: string,
     profilePhoto?: string,
