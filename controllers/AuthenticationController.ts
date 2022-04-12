@@ -106,7 +106,6 @@ export default class AuthenticationController {
             next(new NoUserLoggedInError());
         }
     }
-
     logout = (req: Request, res: Response) => {
         // @ts-ignore
         req.session.destroy();

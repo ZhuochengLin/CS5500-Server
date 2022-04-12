@@ -7,15 +7,14 @@ import {Express, NextFunction, Request, Response} from "express";
 import TuitControllerI from "../interfaces/TuitControllerI";
 import {
     EmptyTuitError, InvalidInputError,
-    MediaContentExceedsLimitError,
+    MediaContentExceedsLimitError, MultiTypeMediaError,
     NoPermissionError,
-    NoSuchTuitError,
     NoSuchUserError
 } from "../errors/CustomErrors";
 import AuthenticationController from "./AuthenticationController";
 import CloudinaryController from "./CloudinaryController";
 import UserDao from "../daos/UserDao";
-import {IMAGE_FIELD, MY, VIDEO_FIELD} from "../utils/constants";
+import {IMAGE_FIELD, IMAGE_LIMIT, MY, VIDEO_FIELD, VIDEO_LIMIT} from "../utils/constants";
 
 const multer = require("multer");
 const memoStorage = multer.memoryStorage();
@@ -57,10 +56,10 @@ export default class TuitController implements TuitControllerI {
             app.get("/api/users/:uid/tuits", TuitController.tuitController.findAllTuitsByUser);
             app.get("/api/tuits/:tid", TuitController.tuitController.findTuitById);
             app.post("/api/users/:uid/tuits",
-                upload.fields([{name: "image", maxCount: 6}, {name: "video", maxCount: 1}]),
+                upload.fields([{name: IMAGE_FIELD, maxCount: 6}, {name: VIDEO_FIELD, maxCount: 1}]),
                 TuitController.tuitController.createTuitByUser);
             app.put("/api/users/:uid/tuits/:tid",
-                upload.fields([{name: "image", maxCount: 6}, {name: "video", maxCount: 1}]),
+                upload.fields([{name: IMAGE_FIELD, maxCount: 6}, {name: VIDEO_FIELD, maxCount: 1}]),
                 TuitController.tuitController.updateTuit);
             app.delete("/api/tuits/:tid", TuitController.tuitController.deleteTuit);
             app.delete("/api/tuits", TuitController.tuitController.deleteAllTuits);
@@ -165,12 +164,22 @@ export default class TuitController implements TuitControllerI {
             next(new EmptyTuitError());
             return;
         }
-        let media;
-        try {
-            media = await TuitController.cloudinaryController.uploadMedia(req);
-        } catch (e) {
-            next(e);
-            return
+        const files = req.files;
+        let media = {IMAGE_FIELD: [], VIDEO_FIELD: []};
+        if (files) {
+            if (IMAGE_FIELD in files && VIDEO_FIELD in files) {
+                next(new MultiTypeMediaError());
+                return;
+            }
+            try {
+                // @ts-ignore
+                media[IMAGE_FIELD] = await TuitController.cloudinaryController.uploadMedia(files, IMAGE_FIELD, IMAGE_LIMIT);
+                // @ts-ignore
+                media[VIDEO_FIELD] = await TuitController.cloudinaryController.uploadMedia(files, VIDEO_FIELD, VIDEO_LIMIT);
+            } catch (e) {
+                next(e);
+                return;
+            }
         }
         TuitController.tuitDao.createTuitByUser(userId, {...tuit, ...media})
             .then((tuit: Tuit) => res.json(tuit))
@@ -204,29 +213,47 @@ export default class TuitController implements TuitControllerI {
         }
         const userOwnsTuit = await TuitController.tuitDao.findTuitOwnedByUser(userId, tuitId);
         if (userOwnsTuit) {
-            let media;
-            try {
-                media = await TuitController.cloudinaryController.uploadMedia(req);
-            } catch (e) {
-                next(e);
-                return
-            }
+            const files = req.files;
             // replace old media with new media
             let newTuit = req.body;
-            let newImage = newTuit.image ? newTuit.image : [];
-            let newVideo = newTuit.video ? newTuit.video : [];
-            newImage = Array.prototype.concat(newImage, media.image);
-            newVideo = Array.prototype.concat(newVideo, media.video);
+            let newImage = [];
+            let newVideo = [];
+            if (newTuit[IMAGE_FIELD]) {
+                newImage = Array.isArray(newTuit[IMAGE_FIELD]) ? newTuit[IMAGE_FIELD] : [newTuit[IMAGE_FIELD]];
+            }
+            if (newTuit[VIDEO_FIELD]) {
+                newVideo = Array.isArray(newTuit[VIDEO_FIELD]) ? newTuit[VIDEO_FIELD] : [newTuit[VIDEO_FIELD]];
+            }
+            // @ts-ignore
+            const newImageCount = newImage.length + (files && IMAGE_FIELD in files ? files[IMAGE_FIELD].length : 0);
+            // @ts-ignore
+            const newVideoCount = newVideo.length + (files && VIDEO_FIELD in files ? files[VIDEO_FIELD].length : 0);
             // both image and video
-            if (newImage.length > 0 && newVideo.length > 0) {
+            if (newImageCount > 0 && newVideoCount > 0) {
                 next(new MediaContentExceedsLimitError());
                 return;
             }
             // 6 images or 1 video
-            if (newImage.length > 6 || newVideo.length > 1) {
+            if (newImageCount > IMAGE_LIMIT || newVideoCount > VIDEO_LIMIT) {
                 next(new MediaContentExceedsLimitError());
                 return;
             }
+            const media = {IMAGE_FIELD: [], VIDEO_FIELD: []};
+            if (files) {
+                try {
+                    // @ts-ignore
+                    media[IMAGE_FIELD] = await TuitController.cloudinaryController.uploadMedia(files, IMAGE_FIELD, IMAGE_LIMIT);
+                    // @ts-ignore
+                    media[VIDEO_FIELD] = await TuitController.cloudinaryController.uploadMedia(files, VIDEO_FIELD, VIDEO_LIMIT);
+                } catch (e) {
+                    next(e);
+                    return;
+                }
+            }
+            // @ts-ignore
+            newImage = Array.prototype.concat(newImage, media[IMAGE_FIELD]);
+            // @ts-ignore
+            newVideo = Array.prototype.concat(newVideo, media[VIDEO_FIELD]);
             newTuit = {...newTuit, image: newImage, video: newVideo};
             TuitController.tuitDao.updateTuit(tuitId, newTuit)
                 .then((status) => res.send(status))

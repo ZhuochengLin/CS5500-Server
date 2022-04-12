@@ -18,22 +18,13 @@ export default class CloudinaryController {
     private constructor() {
     }
 
-    uploadMedia = async (req: Request): Promise<Media> => {
-        const media = {"image": [], "video": []};
-        const files = req.files;
+    uploadMedia = async (files: any, field: string, limit: number): Promise<string[]> => {
         if (!files) {
-            return Promise.resolve(media);
-        }
-        if ("image" in files && "video" in files) {
-            throw new MultiTypeMediaError()
+            return Promise.resolve([]);
         }
         // @ts-ignore
-        media.image = "image" in files ?
-            await CloudinaryController.cloudinaryDao.uploadMedia(files["image"], 6) : [];
-        // @ts-ignore
-        media.video = "video" in files ?
-            (await CloudinaryController.cloudinaryDao.uploadMedia(files["video"], 1)) : [];
-        return Promise.resolve(media);
+        const media_urls = field in files ? await CloudinaryController.cloudinaryDao.uploadMedia(files[field], limit) : [];
+        return Promise.resolve(media_urls);
     }
 
 }
