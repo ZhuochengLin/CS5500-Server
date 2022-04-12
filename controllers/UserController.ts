@@ -7,7 +7,12 @@ import {Express, NextFunction, Request, Response} from "express";
 import UserControllerI from "../interfaces/UserControllerI";
 import AuthenticationController from "./AuthenticationController";
 import {InvalidInputError, NoPermissionError, UserAlreadyExistsError} from "../errors/CustomErrors";
-import {MY} from "../utils/constants";
+import {HEADER_IMAGE_FIELD, MY, PROFILE_PHOTO_FIELD} from "../utils/constants";
+import CloudinaryController from "./CloudinaryController";
+
+const multer = require("multer");
+const memoStorage = multer.memoryStorage();
+const upload = multer({storage: memoStorage});
 
 const ObjectId = require('mongoose').Types.ObjectId;
 
@@ -28,6 +33,7 @@ const ObjectId = require('mongoose').Types.ObjectId;
 export default class UserController implements UserControllerI {
     private static userDao: UserDao = UserDao.getInstance();
     private static userController: UserController | null = null;
+    private static cloudinaryController: CloudinaryController = CloudinaryController.getInstance();
 
     /**
      * Creates singleton controller instance
@@ -45,6 +51,7 @@ export default class UserController implements UserControllerI {
             app.post("/api/users",
                 UserController.userController.createUser);
             app.put("/api/users/:uid",
+                upload.fields([{name: HEADER_IMAGE_FIELD, maxCount: 1}, {name: PROFILE_PHOTO_FIELD, maxCount: 1}]),
                 UserController.userController.updateUser);
             app.delete("/api/users/:uid",
                 UserController.userController.deleteUser);
@@ -148,6 +155,17 @@ export default class UserController implements UserControllerI {
                 return;
             }
         }
+        const files = req.files;
+        let headerImage = null;
+        let profilePhoto = null;
+        if (files) {
+            headerImage = await UserController.cloudinaryController.uploadMedia(files, HEADER_IMAGE_FIELD, 1);
+            headerImage = headerImage.length > 0 ? headerImage[0] : null;
+            profilePhoto = await UserController.cloudinaryController.uploadMedia(files, PROFILE_PHOTO_FIELD, 1);
+            profilePhoto = profilePhoto.length > 0 ? profilePhoto[0] : null;
+        }
+        data[HEADER_IMAGE_FIELD] = headerImage ? headerImage : data[HEADER_IMAGE_FIELD];
+        data[PROFILE_PHOTO_FIELD] = profilePhoto ? profilePhoto : data[PROFILE_PHOTO_FIELD];
         UserController.userDao.updateUser(userId, data)
             .then((status) => res.send(status)).catch(next);
     }

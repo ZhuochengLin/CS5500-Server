@@ -9,7 +9,7 @@ const UserSchema = new mongoose.Schema<User>({
     email: String,
     profilePhoto: String,
     headerImage: String,
-    biography: String,
+    bio: String,
     dateOfBirth: Date,
     accountType: {type: String, enum: ["PERSONAL", "ACADEMIC", "PROFESSIONAL"], default: "PERSONAL"},
     maritalStatus: {type: String, enum: ["MARRIED", "SINGLE", "WIDOWED"], default: "SINGLE"},

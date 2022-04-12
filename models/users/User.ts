@@ -11,7 +11,7 @@ export default interface User {
     lastName?: string,
     profilePhoto?: string,
     headerImage?: string,
-    biography?: string,
+    bio?: string,
     dateOfBirth?: Date,
     accountType?: AccountType,
     maritalStatus?: MaritalStatus,
