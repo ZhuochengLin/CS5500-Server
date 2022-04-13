@@ -9,6 +9,7 @@ import AuthenticationController from "./AuthenticationController";
 import {InvalidInputError, NoPermissionError, UserAlreadyExistsError} from "../errors/CustomErrors";
 import {HEADER_IMAGE_FIELD, MY, PROFILE_PHOTO_FIELD} from "../utils/constants";
 import CloudinaryController from "./CloudinaryController";
+import CloudinaryDao from "../daos/CloudinaryDao";
 
 const multer = require("multer");
 const memoStorage = multer.memoryStorage();
@@ -33,7 +34,7 @@ const ObjectId = require('mongoose').Types.ObjectId;
 export default class UserController implements UserControllerI {
     private static userDao: UserDao = UserDao.getInstance();
     private static userController: UserController | null = null;
-    private static cloudinaryController: CloudinaryController = CloudinaryController.getInstance();
+    private static cloudinaryDao: CloudinaryDao = CloudinaryDao.getInstance();
 
     /**
      * Creates singleton controller instance
@@ -159,9 +160,11 @@ export default class UserController implements UserControllerI {
         let headerImage = null;
         let profilePhoto = null;
         if (files) {
-            headerImage = await UserController.cloudinaryController.uploadMedia(files, HEADER_IMAGE_FIELD, 1);
+            // @ts-ignore
+            headerImage = await UserController.cloudinaryDao.uploadMedia(files[HEADER_IMAGE_FIELD], 1);
             headerImage = headerImage.length > 0 ? headerImage[0] : null;
-            profilePhoto = await UserController.cloudinaryController.uploadMedia(files, PROFILE_PHOTO_FIELD, 1);
+            // @ts-ignore
+            profilePhoto = await UserController.cloudinaryDao.uploadMedia(files[PROFILE_PHOTO_FIELD], 1);
             profilePhoto = profilePhoto.length > 0 ? profilePhoto[0] : null;
         }
         data[HEADER_IMAGE_FIELD] = headerImage ? headerImage : data[HEADER_IMAGE_FIELD];
