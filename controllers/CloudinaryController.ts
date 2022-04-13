@@ -26,9 +26,8 @@ export default class CloudinaryController {
     private constructor() {
     }
 
-    findAllCloudMedia = (req: Request, res: Response, next: NextFunction) => {
-        CloudinaryController.cloudinaryDao.findAllCloudMedia()
-            // @ts-ignore
+    findAllCloudMedia = async (req: Request, res: Response, next: NextFunction) => {
+        return CloudinaryController.cloudinaryDao.findCloudMedia()
             .then(media => res.json(media))
             .catch(next);
     }
@@ -43,20 +42,42 @@ export default class CloudinaryController {
         }
         const isAdmin = await AuthenticationController.isAdmin(profile.username);
         if (isAdmin) {
-            const localMedia = this.findAllLocalMedia();
-            const cloudMedia = await CloudinaryController.cloudinaryDao.findAllCloudMedia();
-            const trashMediaIds = [];
-            for (const m of cloudMedia) {
+            const localMedia = await this.findAllLocalMedia();
+            const cloudMedia = await CloudinaryController.cloudinaryDao.findCloudMedia();
+            const trashImageIds = [];
+            const trashVideoIds = [];
+            // image
+            // @ts-ignore
+            for (const m of cloudMedia[IMAGE_FIELD]) {
                 // @ts-ignore
-                if (m.secure_url in localMedia) {
+                if (localMedia.has(m.secure_url)) {
                     continue;
                 }
                 // @ts-ignore
-                trashMediaIds.push(m.public_id);
+                trashImageIds.push(m.public_id);
             }
-            CloudinaryController.cloudinaryDao.deleteMedia(trashMediaIds)
-                .then(status => res.json(status))
-                .catch(next);
+            // video
+            // @ts-ignore
+            for (const m of cloudMedia[VIDEO_FIELD]) {
+                // @ts-ignore
+                if (localMedia.has(m.secure_url)) {
+                    continue;
+                }
+                // @ts-ignore
+                trashVideoIds.push(m.public_id);
+            }
+            try {
+                // TODO: add delete result report
+                if (trashImageIds.length > 0) {
+                    await CloudinaryController.cloudinaryDao.deleteImages(trashImageIds);
+                }
+                if (trashVideoIds.length > 0) {
+                    await CloudinaryController.cloudinaryDao.deleteVideos(trashVideoIds);
+                }
+                res.sendStatus(200);
+            } catch (e) {
+                next(e);
+            }
         } else {
             next(new NoPermissionError());
         }
