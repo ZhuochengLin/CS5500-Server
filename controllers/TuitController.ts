@@ -15,6 +15,7 @@ import AuthenticationController from "./AuthenticationController";
 import CloudinaryController from "./CloudinaryController";
 import UserDao from "../daos/UserDao";
 import {IMAGE_FIELD, IMAGE_LIMIT, MY, VIDEO_FIELD, VIDEO_LIMIT} from "../utils/constants";
+import CloudinaryDao from "../daos/CloudinaryDao";
 
 const multer = require("multer");
 const memoStorage = multer.memoryStorage();
@@ -41,7 +42,7 @@ export default class TuitController implements TuitControllerI {
     private static userDao: UserDao = UserDao.getInstance();
     private static tuitDao: TuitDao = TuitDao.getInstance();
     private static tuitController: TuitController | null = null;
-    private static cloudinaryController: CloudinaryController = CloudinaryController.getInstance();
+    private static cloudinaryDao: CloudinaryDao = CloudinaryDao.getInstance();
 
     /**
      * Creates singleton controller instance
@@ -173,9 +174,9 @@ export default class TuitController implements TuitControllerI {
             }
             try {
                 // @ts-ignore
-                media[IMAGE_FIELD] = await TuitController.cloudinaryController.uploadMedia(files, IMAGE_FIELD, IMAGE_LIMIT);
+                media[IMAGE_FIELD] = await TuitController.cloudinaryDao.uploadMedia(files[IMAGE_FIELD], IMAGE_LIMIT);
                 // @ts-ignore
-                media[VIDEO_FIELD] = await TuitController.cloudinaryController.uploadMedia(files, VIDEO_FIELD, VIDEO_LIMIT);
+                media[VIDEO_FIELD] = await TuitController.cloudinaryDao.uploadMedia(files[VIDEO_FIELD], VIDEO_LIMIT);
             } catch (e) {
                 next(e);
                 return;
@@ -242,9 +243,9 @@ export default class TuitController implements TuitControllerI {
             if (files) {
                 try {
                     // @ts-ignore
-                    media[IMAGE_FIELD] = await TuitController.cloudinaryController.uploadMedia(files, IMAGE_FIELD, IMAGE_LIMIT);
+                    media[IMAGE_FIELD] = await TuitController.cloudinaryDao.uploadMedia(files[IMAGE_FIELD], IMAGE_LIMIT);
                     // @ts-ignore
-                    media[VIDEO_FIELD] = await TuitController.cloudinaryController.uploadMedia(files, VIDEO_FIELD, VIDEO_LIMIT);
+                    media[VIDEO_FIELD] = await TuitController.cloudinaryDao.uploadMedia(files[VIDEO_FIELD], VIDEO_LIMIT);
                 } catch (e) {
                     next(e);
                     return;

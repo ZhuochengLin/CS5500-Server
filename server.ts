@@ -19,6 +19,7 @@ import {config} from "dotenv";
 import {LogErrors} from "./errors/LogErrors";
 import {ErrorHandler} from "./errors/ErrorHandler";
 import LikeController from "./controllers/LikeController";
+import CloudinaryController from "./controllers/CloudinaryController";
 const cors = require("cors");
 const session = require("express-session");
 
@@ -66,6 +67,7 @@ const userController = UserController.getInstance(app);
 const tuitController = TuitController.getInstance(app);
 const authenticationController = AuthenticationController.getInstance(app);
 const likeController = LikeController.getInstance(app);
+const cloudinaryController = CloudinaryController.getInstance(app);
 
 /**
  * Start a server listening at port 4000 locally

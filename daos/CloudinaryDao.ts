@@ -1,12 +1,12 @@
 import {MediaContentExceedsLimitError} from "../errors/CustomErrors";
 
 const cloudinary = require('cloudinary').v2;
-const DatauriParser = require('datauri/parser');
 
 export default class CloudinaryDao {
 
     private static cloudinaryDao: CloudinaryDao | null = null;
     private static cloudinaryUploader = cloudinary.uploader;
+    private static cloudinaryAPI = cloudinary.api;
 
     public static getInstance = () => {
         if (CloudinaryDao.cloudinaryDao === null) {
@@ -16,6 +16,9 @@ export default class CloudinaryDao {
     }
 
     uploadMedia = async (assets: Express.Multer.File[], limit: number): Promise<string[]> => {
+        if (!assets) {
+            return [];
+        }
         if (assets.length > limit) {
             throw new MediaContentExceedsLimitError();
         }
@@ -28,6 +31,14 @@ export default class CloudinaryDao {
             mediaUrls.push(response.secure_url);
         }
         return mediaUrls;
+    }
+
+    findAllCloudMedia = async (): Promise<[]> => {
+        return CloudinaryDao.cloudinaryAPI.resources().then((res: { resources: any; }) => res.resources);
+    }
+
+    deleteMedia = async (publicIds: string[]): Promise<any> => {
+        return CloudinaryDao.cloudinaryAPI.delete_resources(publicIds);
     }
 
 }
