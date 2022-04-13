@@ -87,18 +87,23 @@ export default class LikeController {
         LikeController.likeDao.findAllLikes().then((likes) => res.json(likes)).catch(next);
     }
 
-    userAlreadyLikedTuit = async (req: Request, res: Response) => {
-        const uid = req.params.uid;
-        const tid = req.params.tid;
-        //@ts-ignore
-        const profile = req.session['profile'];
-        if (uid === MY && !profile) {
-            res.sendStatus(403);
-            return
+    userAlreadyLikedTuit = async (req: Request, res: Response, next: NextFunction) => {
+        let profile, userId;
+        userId = req.params.uid;
+        if (userId === MY) {
+            try {
+                profile = AuthenticationController.checkLogin(req);
+                userId = profile._id;
+            } catch (e) {
+                next(e);
+                return;
+            }
         }
-
-        const userId = uid === MY && profile ?
-            profile._id : uid;
+        const tid = req.params.tid;
+        if (!AuthenticationController.isValidId(userId) || !AuthenticationController.isValidId(tid)) {
+            next(new InvalidInputError("Received invalid id"));
+            return;
+        }
         LikeController.likeDao.findUserAlreadyLikedTuit(userId, tid)
             .then((likes) => res.json(likes))
     }
