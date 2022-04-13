@@ -73,12 +73,11 @@ export default class UserDao implements UserDaoI {
      * @returns Promise To be notified when user is updated in the database
      */
     updateUser = async (uid: string, user: User): Promise<any> => {
-        if ("password" in user) {
-            user.password = await bcrypt.hash(user.password, saltRounds);
+        if (user.password) {
+            const password = user.password;
+            user.password = await bcrypt.hash(password, saltRounds);
         }
-        UserModel.updateOne(
-            {_id: uid},
-            {$set: user});
+        return UserModel.updateOne({_id: uid}, {$set: user});
     }
 
     /**
