@@ -1,4 +1,5 @@
 import {MediaContentExceedsLimitError} from "../errors/CustomErrors";
+import {IMAGE_FIELD, VIDEO_FIELD} from "../utils/constants";
 
 const cloudinary = require('cloudinary').v2;
 
@@ -33,12 +34,29 @@ export default class CloudinaryDao {
         return mediaUrls;
     }
 
-    findAllCloudMedia = async (): Promise<[]> => {
+    findCloudMedia = async (): Promise<{}> => {
+        const media = {};
+        // @ts-ignore
+        media[IMAGE_FIELD] = await this.findCloudImages();
+        // @ts-ignore
+        media[VIDEO_FIELD] = await this.findCloudVideos();
+        return  media;
+    }
+
+    findCloudImages = async (): Promise<[]> => {
         return CloudinaryDao.cloudinaryAPI.resources().then((res: { resources: any; }) => res.resources);
     }
 
-    deleteMedia = async (publicIds: string[]): Promise<any> => {
+    findCloudVideos = async (): Promise<[]> => {
+        return CloudinaryDao.cloudinaryAPI.resources({resource_type: "video"}).then((res: { resources: any; }) => res.resources);
+    }
+
+    deleteImages = async (publicIds: string[]): Promise<any> => {
         return CloudinaryDao.cloudinaryAPI.delete_resources(publicIds);
+    }
+
+    deleteVideos = async (publicIds: string[]): Promise<any> => {
+        return CloudinaryDao.cloudinaryAPI.delete_resources(publicIds, {resource_type: "video"});
     }
 
 }
