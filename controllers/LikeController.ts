@@ -1,9 +1,9 @@
 import LikeDao from "../daos/LikeDao";
-import {Express, NextFunction, Request, Response} from "express";
+import { Express, NextFunction, Request, Response } from "express";
 import AuthenticationController from "./AuthenticationController";
 import TuitDao from "../daos/TuitDao";
-import {InvalidInputError, NoSuchTuitError} from "../errors/CustomErrors";
-import {MY} from "../utils/constants";
+import { InvalidInputError, NoSuchTuitError } from "../errors/CustomErrors";
+import { MY } from "../utils/constants";
 
 export default class LikeController {
 
@@ -20,6 +20,7 @@ export default class LikeController {
             app.get("/api/likes", LikeController.likeController.findAllLikes);
             app.get("/api/users/:uid/likes", LikeController.likeController.findAllTuitsLikedByUser);
             app.put("/api/users/:uid/likes/:tid", LikeController.likeController.userTogglesLikesTuit);
+            app.get("/api/users/:uid/likes/:tid", LikeController.likeController.userAlreadyLikedTuit);
         }
         return LikeController.likeController;
     }
@@ -86,6 +87,24 @@ export default class LikeController {
         LikeController.likeDao.findAllLikes().then((likes) => res.json(likes)).catch(next);
     }
 
-
-
+    userAlreadyLikedTuit = async (req: Request, res: Response, next: NextFunction) => {
+        let profile, userId;
+        userId = req.params.uid;
+        if (userId === MY) {
+            try {
+                profile = AuthenticationController.checkLogin(req);
+                userId = profile._id;
+            } catch (e) {
+                next(e);
+                return;
+            }
+        }
+        const tid = req.params.tid;
+        if (!AuthenticationController.isValidId(userId) || !AuthenticationController.isValidId(tid)) {
+            next(new InvalidInputError("Received invalid id"));
+            return;
+        }
+        LikeController.likeDao.findUserAlreadyLikedTuit(userId, tid)
+            .then((likes) => res.json(likes))
+    }
 }
