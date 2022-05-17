@@ -1,4 +1,6 @@
 # Express Server for CS5500 Project
+## Client Repo:
+https://github.com/ZhuochengLin/CS5500-Client
 ## API Endpoint
 All endpoints that can create/update/delete data now need a logged-in user to use. A normal user can only manipulate 
 data that belongs to him/her. An administrator can do anything.
